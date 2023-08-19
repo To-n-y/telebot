@@ -1,6 +1,7 @@
 import datetime
 import requests
 import telebot
+import re
 
 from bs4 import BeautifulSoup as bs
 from telebot import types
@@ -23,8 +24,8 @@ def get_req(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     return response.text
 
 
-def now_parser(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
-    response = get_req(fl)
+def now_parser():  # 1- yesterday 2 - today 3 - tomorrow 4 - now
+    response = get_req(4)
     soup = bs(response, "html.parser")
     now_date = soup.findAll('div', class_='now-localdate')[0].get_text()
     now_desc = soup.findAll('div', class_='now-desc')[0].get_text()
@@ -48,7 +49,29 @@ def now_parser(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     return answer
 
 
-now_parser(4)
+def today_tomorrow_parser(fl):
+    response = get_req(fl)
+    soup1 = bs(response, "html.parser")
+
+    tomorrow_desc = soup1.find('div', 'weathertab weathertab-block tooltip').get('data-text')
+
+    tomorrow_response = str(soup1.findAll('div', class_='weathertab-wrap')[1])
+    soup2 = bs(tomorrow_response, "html.parser")
+
+    tomorrow_date = soup2.find("div", class_=re.compile(r"date date-\d")).get_text()
+    temperature = soup2.findAll('span', class_='unit unit_temperature_c')
+    lower_temperature = temperature[0].get_text()
+    upper_temperature = temperature[1].get_text()
+    precipitation = soup2.findAll('div', class_='precipitation')
+
+    if precipitation:
+        precipitation = precipitation[0].get_text()
+    else:
+        precipitation = "0 мм"
+
+    answer = "Прогноз на " + tomorrow_date + "\n" + tomorrow_desc + "\nТемпература: " + lower_temperature + "-" + upper_temperature[
+                                                                                                                  1:] + "\nОсадки: " + precipitation
+    return answer
 
 
 @bot.message_handler(commands=['start'])
@@ -59,11 +82,11 @@ def start(message):
         log.write(str(datetime.datetime.now()))
         log.write('\n')
 
-
+    print(message.chat.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("❓ Узнать погоду сейчас")
     btn2 = types.KeyboardButton("❓ Узнать погоду завтра")
-    btn3 = types.KeyboardButton("❓ Узнать погоду вчера")
+    btn3 = types.KeyboardButton("❓ Узнать погоду сегодня")
     btn4 = types.KeyboardButton("👋 TODO")
     markup.add(btn1, btn2, btn3, btn4)
     bot.send_message(message.chat.id,
@@ -73,13 +96,16 @@ def start(message):
 
 @bot.message_handler(content_types=['text'])
 def send_text(message):
-    if message.text == "❓ Узнать погоду вчера":
-        pass
+    answer = message.text + "\n\n"
+    if message.text == "❓ Узнать погоду сегодня":
+        answer += today_tomorrow_parser(2)
+        bot.send_message(message.chat.id, text=answer)
     elif message.text == "❓ Узнать погоду сейчас":
-        answer_now = now_parser(4)
-        bot.send_message(message.chat.id, text=answer_now)
+        answer += now_parser()
+        bot.send_message(message.chat.id, text=answer)
     elif message.text == "❓ Узнать погоду завтра":
-        pass
+        answer += today_tomorrow_parser(3)
+        bot.send_message(message.chat.id, text=answer)
     else:
         pass
 
