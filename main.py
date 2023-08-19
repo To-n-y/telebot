@@ -10,16 +10,22 @@ from config import URL, API_TOKEN
 bot = telebot.TeleBot(API_TOKEN)
 
 
-def parser(fl):  # 1 - yesterday 2 - now 3 - tomorrow
+def get_req(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
+    d = {1: '/yesterday', 2: '/today', 3: '/tomorrow', 4: '/now'}
+    curr_url = URL + d.get(fl)
     headers = requests.utils.default_headers()
     headers.update(
         {
             'User-Agent': 'My User Agent 1.0',
         }
     )
-    response = requests.get(URL, headers=headers)
-    soup = bs(response.text, "html.parser")
+    response = requests.get(curr_url, headers=headers)
+    return response.text
 
+
+def now_parser(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
+    response = get_req(fl)
+    soup = bs(response, "html.parser")
     now_date = soup.findAll('div', class_='now-localdate')[0].get_text()
     now_desc = soup.findAll('div', class_='now-desc')[0].get_text()
 
@@ -39,11 +45,10 @@ def parser(fl):  # 1 - yesterday 2 - now 3 - tomorrow
     sun_set = sun[1].get_text()
 
     answer = now_date + "\n" + now_desc + "\nТемпература сейчас: " + temp_now + "\nПо ощущению: " + temp_feel_like + "\nВетер: " + wind + "\nДавление: " + pressure + "мм рт.ст.\nВлажность: " + humidity + "\nГеомагнитная активность: " + gm + " из 9\nВода: " + water + "\nВосход был: " + sun_rise + "\nЗакат: " + sun_set
-    print(answer)
     return answer
 
 
-parser(1)
+now_parser(4)
 
 
 @bot.message_handler(commands=['start'])
@@ -54,7 +59,7 @@ def start(message):
         log.write(str(datetime.datetime.now()))
         log.write('\n')
 
-    print(message.chat.id)
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("❓ Узнать погоду сейчас")
     btn2 = types.KeyboardButton("❓ Узнать погоду завтра")
@@ -71,11 +76,12 @@ def send_text(message):
     if message.text == "❓ Узнать погоду вчера":
         pass
     elif message.text == "❓ Узнать погоду сейчас":
-        answer_now = parser(2)
+        answer_now = now_parser(4)
         bot.send_message(message.chat.id, text=answer_now)
     elif message.text == "❓ Узнать погоду завтра":
         pass
     else:
         pass
+
 
 bot.polling()
