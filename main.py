@@ -1,23 +1,16 @@
 import datetime
 import requests
 import telebot
-import os
 
-from dotenv import load_dotenv
 from bs4 import BeautifulSoup as bs
 from telebot import types
 
-dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
-if os.path.exists(dotenv_path):
-    load_dotenv(dotenv_path)
-
-URL = os.getenv("URL", "secret")
-API_TOKEN = os.getenv("API_TOKEN", "secret")
+from config import URL, API_TOKEN
 
 bot = telebot.TeleBot(API_TOKEN)
 
 
-def parser(fl):  # 1 - yesterday 2 - today 3 - tomorrow
+def parser(fl):  # 1 - yesterday 2 - now 3 - tomorrow
     headers = requests.utils.default_headers()
     headers.update(
         {
@@ -26,21 +19,28 @@ def parser(fl):  # 1 - yesterday 2 - today 3 - tomorrow
     )
     response = requests.get(URL, headers=headers)
     soup = bs(response.text, "html.parser")
+
+    now_date = soup.findAll('div', class_='now-localdate')[0].get_text()
+    now_desc = soup.findAll('div', class_='now-desc')[0].get_text()
+
     MainInfo = soup.findAll('span', class_='unit unit_temperature_c')
     temp_now = MainInfo[0].get_text()
     temp_feel_like = MainInfo[1].get_text()
-    print(temp_now, temp_feel_like, len(MainInfo))
+
     wind = soup.findAll('div', class_='unit unit_wind_m_s')[0].get_text().replace('м/c', ' м/с ')
     pressure = soup.findAll('div', class_='unit unit_pressure_mm_hg_atm')[0].get_text().replace('ммрт. ст.', '')
     humidity = soup.findAll('div', class_='now-info-item humidity')[0].get_text().replace('Влажность', '')
     gm = soup.findAll('div', class_='now-info-item gm')[0].get_text().replace('Г/м активность', '').replace('баллаиз 9',
                                                                                                             '')
     water = soup.findAll('div', class_='now-info-item water')[0].get_text().split()[0].replace('Вода', '')
-    print(wind, pressure, humidity, gm, water, sep='\n')
 
-    sun_set_rise = soup.findAll('div', class_='time')[0].get_text()
+    sun = soup.findAll('div', class_='time')
+    sun_rise = sun[0].get_text()
+    sun_set = sun[1].get_text()
 
-    now_date = soup.findAll('div', class_='now-localdate')[0].get_text()
+    answer = now_date + "\n" + now_desc + "\nТемпература сейчас: " + temp_now + "\nПо ощущению: " + temp_feel_like + "\nВетер: " + wind + "\nДавление: " + pressure + "мм рт.ст.\nВлажность: " + humidity + "\nГеомагнитная активность: " + gm + " из 9\nВода: " + water + "\nВосход был: " + sun_rise + "\nЗакат: " + sun_set
+    print(answer)
+    return answer
 
 
 parser(1)
@@ -48,7 +48,7 @@ parser(1)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    # TODO: loger
+    # TODO: logger
     with open("log.txt", "a") as log:
         log.write("Имя: " + message.from_user.first_name + " id: " + str(message.from_user.id) + " Приветствие ")
         log.write(str(datetime.datetime.now()))
@@ -56,7 +56,7 @@ def start(message):
 
     print(message.chat.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("❓ Узнать погоду сегодня")
+    btn1 = types.KeyboardButton("❓ Узнать погоду сейчас")
     btn2 = types.KeyboardButton("❓ Узнать погоду завтра")
     btn3 = types.KeyboardButton("❓ Узнать погоду вчера")
     btn4 = types.KeyboardButton("👋 TODO")
@@ -70,11 +70,12 @@ def start(message):
 def send_text(message):
     if message.text == "❓ Узнать погоду вчера":
         pass
-    elif message.text == "❓ Узнать погоду сегодня":
-        pass
+    elif message.text == "❓ Узнать погоду сейчас":
+        answer_now = parser(2)
+        bot.send_message(message.chat.id, text=answer_now)
     elif message.text == "❓ Узнать погоду завтра":
         pass
     else:
         pass
 
-# bot.polling()
+bot.polling()
