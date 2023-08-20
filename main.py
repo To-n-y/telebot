@@ -11,7 +11,7 @@ from config import URL, API_TOKEN
 bot = telebot.TeleBot(API_TOKEN)
 
 
-def get_req(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
+def get_req(fl: int) -> str:  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     d = {1: '/yesterday', 2: '/today', 3: '/tomorrow', 4: '/now'}
     curr_url = URL + d.get(fl)
     headers = requests.utils.default_headers()
@@ -24,7 +24,7 @@ def get_req(fl):  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     return response.text
 
 
-def now_parser():  # 1- yesterday 2 - today 3 - tomorrow 4 - now
+def now_parser() -> str:  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     response = get_req(4)
     soup = bs(response, "html.parser")
     now_date = soup.findAll('div', class_='now-localdate')[0].get_text()
@@ -49,7 +49,7 @@ def now_parser():  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     return answer
 
 
-def today_tomorrow_parser(fl):
+def today_tomorrow_parser(fl: int) -> str:
     response = get_req(fl)
     soup1 = bs(response, "html.parser")
 
