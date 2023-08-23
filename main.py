@@ -24,6 +24,28 @@ def get_req(fl: int) -> str:  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     return response.text
 
 
+def decor(action):
+    dict = {1: "Приветствие", 2: "Узнать погоду"}
+
+    def inner(func):
+        def wrapper(*args, **kwargs):
+            with open("log.txt", "a") as log:
+                log.write(str(datetime.datetime.today()))
+                log.write(
+                    " Имя: "
+                    + args[0].from_user.first_name
+                    + " id: "
+                    + str(args[0].from_user.id)
+                    + f' Действие: "{dict.get(action)}"'
+                )
+                log.write("\n")
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return inner
+
+
 def now_parser() -> str:  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     response = get_req(4)
     soup = bs(response, "html.parser")
@@ -67,27 +89,27 @@ def now_parser() -> str:  # 1- yesterday 2 - today 3 - tomorrow 4 - now
     sun_set = sun[1].get_text()
 
     answer = (
-            now_date
-            + "\n"
-            + now_desc
-            + "\nТемпература сейчас: "
-            + temp_now
-            + "\nПо ощущению: "
-            + temp_feel_like
-            + "\nВетер: "
-            + wind
-            + "\nДавление: "
-            + pressure
-            + "мм рт.ст.\nВлажность: "
-            + humidity
-            + "\nГеомагнитная активность: "
-            + gm
-            + " из 9\nВода: "
-            + water
-            + "\nВосход был: "
-            + sun_rise
-            + "\nЗакат: "
-            + sun_set
+        now_date
+        + "\n"
+        + now_desc
+        + "\nТемпература сейчас: "
+        + temp_now
+        + "\nПо ощущению: "
+        + temp_feel_like
+        + "\nВетер: "
+        + wind
+        + "\nДавление: "
+        + pressure
+        + "мм рт.ст.\nВлажность: "
+        + humidity
+        + "\nГеомагнитная активность: "
+        + gm
+        + " из 9\nВода: "
+        + water
+        + "\nВосход был: "
+        + sun_rise
+        + "\nЗакат: "
+        + sun_set
     )
     return answer
 
@@ -117,33 +139,23 @@ def today_tomorrow_parser(fl: int) -> str:
         precipitation = "0 мм"
 
     answer = (
-            "Прогноз на "
-            + tomorrow_date
-            + "\n"
-            + tomorrow_desc
-            + "\nТемпература: "
-            + lower_temperature
-            + "-"
-            + upper_temperature[1:]
-            + "\nОсадки: "
-            + precipitation
+        "Прогноз на "
+        + tomorrow_date
+        + "\n"
+        + tomorrow_desc
+        + "\nТемпература: "
+        + lower_temperature
+        + "-"
+        + upper_temperature[1:]
+        + "\nОсадки: "
+        + precipitation
     )
     return answer
 
 
 @bot.message_handler(commands=["start"])
+@decor(action=1)
 def start(message):
-    with open("log.txt", "a") as log:
-        log.write(str(datetime.datetime.today()))
-        log.write(
-            " Имя: "
-            + message.from_user.first_name
-            + " id: "
-            + str(message.from_user.id)
-            + ' Действие: "Приветствие"'
-        )
-        log.write("\n")
-
     print(message.chat.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton("❓ Узнать погоду сейчас")
@@ -161,6 +173,7 @@ def start(message):
 
 
 @bot.message_handler(content_types=["text"])
+@decor(action=2)
 def send_text(message):
     answer = message.text + "\n\n"
     if message.text == "❓ Узнать погоду сегодня":
